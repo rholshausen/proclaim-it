@@ -3,6 +3,7 @@ name = "proclaim-it-macros"
 version = "0.0.0"
 edition = "2024"
 description = "Procedural macros for the proclaim-it assertion library"
+license = "Apache-2.0"
 
 [lib]
 proc-macro = true
