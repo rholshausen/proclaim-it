@@ -7,3 +7,6 @@ license = "Apache-2.0"
 
 [dependencies]
 proclaim-it-macros = { version = "0.0.1", path = "../proclaim-it-macros" }
+
+[dev-dependencies]
+trybuild = { version = "1", features = ["diff"] }

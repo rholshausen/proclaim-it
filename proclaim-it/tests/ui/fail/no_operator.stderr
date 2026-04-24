@@ -1,0 +1,9 @@
+error: proclaim-it: cannot parse assertion: `x`
+ --> tests/ui/fail/no_operator.rs:6:5
+  |
+6 | /     assert_that! {
+7 | |         x
+8 | |     }
+  | |_____^
+  |
+  = note: this error originates in the macro `assert_that` (in Nightly builds, run with -Z macro-backtrace for more info)
