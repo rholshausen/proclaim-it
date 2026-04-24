@@ -13,14 +13,14 @@ dependencies = [
 
 [[package]]
 name = "proclaim-it"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "proclaim-it-macros",
 ]
 
 [[package]]
 name = "proclaim-it-macros"
-version = "0.0.0"
+version = "0.0.1"
 dependencies = [
  "proc-macro2",
  "quote",

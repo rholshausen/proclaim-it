@@ -1,11 +1,20 @@
-pub use proclaim_it_macros::spectest;
+pub use proclaim_it_macros::assert_that;
+pub use proclaim_it_macros::spec;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[spectest]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
+    #[spec]
+    fn basic_assertions() {
+        let x = 2 + 2;
+        let greeting = "hello world";
+        let result: Result<i32, &str> = Ok(42);
+
+        assert_that! {
+            x == 4
+            greeting contains "world"
+            result is Ok
+        }
     }
 }
