@@ -1,0 +1,13 @@
+[package]
+name = "proclaim-it-macros"
+version = "0.0.0"
+edition = "2024"
+description = "Procedural macros for the proclaim-it assertion library"
+
+[lib]
+proc-macro = true
+
+[dependencies]
+proc-macro2 = "1"
+quote = "1"
+syn = { version = "2", features = ["full"] }

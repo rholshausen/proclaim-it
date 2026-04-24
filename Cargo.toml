@@ -1,0 +1,6 @@
+[workspace]
+members = [
+    "proclaim-it",
+    "proclaim-it-macros",
+]
+resolver = "2"

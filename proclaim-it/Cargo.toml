@@ -1,0 +1,8 @@
+[package]
+name = "proclaim-it"
+version = "0.0.0"
+edition = "2024"
+description = "Enhanced test assertions for Rust using proc-macros"
+
+[dependencies]
+proclaim-it-macros = { version = "0.0.0", path = "../proclaim-it-macros" }
