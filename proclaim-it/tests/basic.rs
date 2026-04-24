@@ -7,8 +7,8 @@ fn basic_assertions() {
     let result: Result<i32, &str> = Ok(42);
 
     assert_that! {
-        x == 2
-        greeting contains "worldx"
-        result is Err
+        x == 4
+        greeting contains "world"
+        result is Ok
     }
 }
