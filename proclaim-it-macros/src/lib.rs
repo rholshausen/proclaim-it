@@ -35,6 +35,9 @@ pub fn spec(_attr: TokenStream, item: TokenStream) -> TokenStream {
 ///
 /// Supported operators: `==`, `!=`, `<`, `<=`, `>`, `>=`, `contains`, `is`
 ///
+/// All assertions in the block are evaluated before the block panics, so a
+/// single failure run reports every failing assertion at once.
+///
 /// `contains` calls `.contains()` on the left-hand side.
 /// `is` uses `matches!` to check an enum variant; bare paths like `Ok` expand to `Ok(..)`.
 #[proc_macro]
@@ -42,14 +45,29 @@ pub fn assert_that(input: TokenStream) -> TokenStream {
     let tokens: Vec<TokenTree> = TokenStream2::from(input).into_iter().collect();
     let lines = split_into_lines(&tokens);
 
-    let mut output = TokenStream2::new();
+    let mut assertions = TokenStream2::new();
     for line in lines {
         if !line.is_empty() {
-            output.extend(generate_assertion(&line));
+            assertions.extend(generate_assertion(&line));
         }
     }
 
-    output.into()
+    quote! {
+        {
+            let mut __proclaim_failures: ::std::vec::Vec<::std::string::String> =
+                ::std::vec::Vec::new();
+            #assertions
+            if !__proclaim_failures.is_empty() {
+                let __n = __proclaim_failures.len();
+                ::core::panic!(
+                    "{} assertion(s) failed:\n\n{}",
+                    __n,
+                    __proclaim_failures.join("\n\n")
+                );
+            }
+        }
+    }
+    .into()
 }
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -135,19 +153,46 @@ fn to_display(tokens: &[TokenTree]) -> String {
     to_stream(tokens).to_string()
 }
 
+/// Generates code that pushes a failure message into `__proclaim_failures` rather
+/// than panicking, so all assertions in the block are evaluated before reporting.
 fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
     match find_op(tokens) {
         Some((Op::Eq, s, e)) => {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
             let msg = format!("{} == {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::pretty_assertions::assert_eq!(#lhs, #rhs, "{}", #msg); }
+            // Use pretty_assertions::Comparison for a colored diff in the collected message.
+            quote! {
+                match (&(#lhs), &(#rhs)) {
+                    (__lhs, __rhs) => {
+                        if !(*__lhs == *__rhs) {
+                            __proclaim_failures.push(::std::format!(
+                                "assertion `{}` failed\n{}",
+                                #msg,
+                                ::pretty_assertions::Comparison::new(__lhs, __rhs)
+                            ));
+                        }
+                    }
+                }
+            }
         }
         Some((Op::Ne, s, e)) => {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
             let msg = format!("{} != {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::pretty_assertions::assert_ne!(#lhs, #rhs, "{}", #msg); }
+            quote! {
+                match (&(#lhs), &(#rhs)) {
+                    (__lhs, __rhs) => {
+                        if *__lhs == *__rhs {
+                            __proclaim_failures.push(::std::format!(
+                                "assertion `{}` failed\n  value: {:?}",
+                                #msg,
+                                __lhs
+                            ));
+                        }
+                    }
+                }
+            }
         }
         Some((Op::Contains, s, e)) => {
             let subject = to_stream(&tokens[..s]);
@@ -157,13 +202,15 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
                 to_display(&tokens[..s]),
                 to_display(&tokens[e..])
             );
-            // Borrow both sides to avoid moves; display with {:?} on failure.
             quote! {
                 {
                     let __subject = &(#subject);
                     let __pattern = &#pattern;
                     if !(*__subject).contains(*__pattern) {
-                        ::core::panic!("{}\n  subject: {:?}\n  pattern: {:?}", #msg, *__subject, *__pattern);
+                        __proclaim_failures.push(::std::format!(
+                            "{}\n  subject: {:?}\n  pattern: {:?}",
+                            #msg, *__subject, *__pattern
+                        ));
                     }
                 }
             }
@@ -177,17 +224,18 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
                 to_display(variant_tokens)
             );
             let variant = to_stream(variant_tokens);
-            // Borrow the subject so we can display the actual value on failure.
             // Match ergonomics lets `matches!(__val, Variant(..))` work through the `&`.
-            // If the RHS already contains parens/braces it's a full pattern; use as-is.
-            // Otherwise append `(..)` so bare paths like `Ok` match any contents.
+            // If the RHS already has parens/braces it's a full pattern; use as-is.
+            // Otherwise append `(..)` so bare paths like `Ok` match tuple/struct variants.
             let has_group = variant_tokens.iter().any(|t| matches!(t, TokenTree::Group(_)));
             if has_group {
                 quote! {
                     {
                         let __val = &(#subject);
                         if !::core::matches!(__val, #variant) {
-                            ::core::panic!("{}\n  actual: {:?}", #msg, __val);
+                            __proclaim_failures.push(::std::format!(
+                                "{}\n  actual: {:?}", #msg, __val
+                            ));
                         }
                     }
                 }
@@ -196,7 +244,9 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
                     {
                         let __val = &(#subject);
                         if !::core::matches!(__val, #variant(..)) {
-                            ::core::panic!("{}\n  actual: {:?}", #msg, __val);
+                            __proclaim_failures.push(::std::format!(
+                                "{}\n  actual: {:?}", #msg, __val
+                            ));
                         }
                     }
                 }
@@ -214,7 +264,9 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
                 match (&(#lhs), &(#rhs)) {
                     (__lhs, __rhs) => {
                         if !(*__lhs < *__rhs) {
-                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                            __proclaim_failures.push(::std::format!(
+                                "{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs
+                            ));
                         }
                     }
                 }
@@ -232,7 +284,9 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
                 match (&(#lhs), &(#rhs)) {
                     (__lhs, __rhs) => {
                         if !(*__lhs <= *__rhs) {
-                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                            __proclaim_failures.push(::std::format!(
+                                "{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs
+                            ));
                         }
                     }
                 }
@@ -250,7 +304,9 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
                 match (&(#lhs), &(#rhs)) {
                     (__lhs, __rhs) => {
                         if !(*__lhs > *__rhs) {
-                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                            __proclaim_failures.push(::std::format!(
+                                "{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs
+                            ));
                         }
                     }
                 }
@@ -268,7 +324,9 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
                 match (&(#lhs), &(#rhs)) {
                     (__lhs, __rhs) => {
                         if !(*__lhs >= *__rhs) {
-                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                            __proclaim_failures.push(::std::format!(
+                                "{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs
+                            ));
                         }
                     }
                 }
