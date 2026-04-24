@@ -75,7 +75,7 @@ dependencies = [
 
 [[package]]
 name = "proclaim-it"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "pretty_assertions",
  "proclaim-it-macros",
@@ -84,7 +84,7 @@ dependencies = [
 
 [[package]]
 name = "proclaim-it-macros"
-version = "0.0.1"
+version = "0.0.2"
 dependencies = [
  "pretty_assertions",
  "proc-macro2",

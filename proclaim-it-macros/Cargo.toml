@@ -1,6 +1,6 @@
 [package]
 name = "proclaim-it-macros"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 description = "Procedural macros for the proclaim-it assertion library"
 license = "Apache-2.0"

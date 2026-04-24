@@ -1,13 +1,13 @@
 [package]
 name = "proclaim-it"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"
 description = "Enhanced test assertions for Rust using proc-macros"
 license = "Apache-2.0"
 
 [dependencies]
 pretty_assertions = "1.4.1"
-proclaim-it-macros = { version = "0.0.1", path = "../proclaim-it-macros" }
+proclaim-it-macros = { version = "0.0.2", path = "../proclaim-it-macros" }
 
 [dev-dependencies]
 trybuild = { version = "1", features = ["diff"] }
