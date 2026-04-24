@@ -9,6 +9,7 @@ license = "Apache-2.0"
 proc-macro = true
 
 [dependencies]
+pretty_assertions = "1.4.1"
 proc-macro2 = { version = "1", features = ["span-locations"] }
 quote = "1"
 syn = { version = "2", features = ["full"] }

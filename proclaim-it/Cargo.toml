@@ -6,6 +6,7 @@ description = "Enhanced test assertions for Rust using proc-macros"
 license = "Apache-2.0"
 
 [dependencies]
+pretty_assertions = "1.4.1"
 proclaim-it-macros = { version = "0.0.1", path = "../proclaim-it-macros" }
 
 [dev-dependencies]

@@ -141,13 +141,13 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
             let msg = format!("{} == {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::core::assert_eq!(#lhs, #rhs, "{}", #msg); }
+            quote! { ::pretty_assertions::assert_eq!(#lhs, #rhs, "{}", #msg); }
         }
         Some((Op::Ne, s, e)) => {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
             let msg = format!("{} != {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::core::assert_ne!(#lhs, #rhs, "{}", #msg); }
+            quote! { ::pretty_assertions::assert_ne!(#lhs, #rhs, "{}", #msg); }
         }
         Some((Op::Contains, s, e)) => {
             let subject = to_stream(&tokens[..s]);
