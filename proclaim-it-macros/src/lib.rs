@@ -153,53 +153,126 @@ fn generate_assertion(tokens: &[TokenTree]) -> TokenStream2 {
             let subject = to_stream(&tokens[..s]);
             let pattern = to_stream(&tokens[e..]);
             let msg = format!(
-                "{} contains {}",
+                "assertion `{} contains {}` failed",
                 to_display(&tokens[..s]),
                 to_display(&tokens[e..])
             );
-            quote! { ::core::assert!(#subject.contains(#pattern), "{}", #msg); }
+            // Borrow both sides to avoid moves; display with {:?} on failure.
+            quote! {
+                {
+                    let __subject = &(#subject);
+                    let __pattern = &#pattern;
+                    if !(*__subject).contains(*__pattern) {
+                        ::core::panic!("{}\n  subject: {:?}\n  pattern: {:?}", #msg, *__subject, *__pattern);
+                    }
+                }
+            }
         }
         Some((Op::Is, s, e)) => {
             let subject = to_stream(&tokens[..s]);
             let variant_tokens = &tokens[e..];
             let msg = format!(
-                "{} is {}",
+                "assertion `{} is {}` failed",
                 to_display(&tokens[..s]),
                 to_display(variant_tokens)
             );
             let variant = to_stream(variant_tokens);
+            // Borrow the subject so we can display the actual value on failure.
+            // Match ergonomics lets `matches!(__val, Variant(..))` work through the `&`.
             // If the RHS already contains parens/braces it's a full pattern; use as-is.
             // Otherwise append `(..)` so bare paths like `Ok` match any contents.
             let has_group = variant_tokens.iter().any(|t| matches!(t, TokenTree::Group(_)));
             if has_group {
-                quote! { ::core::assert!(::core::matches!(#subject, #variant), "{}", #msg); }
+                quote! {
+                    {
+                        let __val = &(#subject);
+                        if !::core::matches!(__val, #variant) {
+                            ::core::panic!("{}\n  actual: {:?}", #msg, __val);
+                        }
+                    }
+                }
             } else {
-                quote! { ::core::assert!(::core::matches!(#subject, #variant(..)), "{}", #msg); }
+                quote! {
+                    {
+                        let __val = &(#subject);
+                        if !::core::matches!(__val, #variant(..)) {
+                            ::core::panic!("{}\n  actual: {:?}", #msg, __val);
+                        }
+                    }
+                }
             }
         }
         Some((Op::Lt, s, e)) => {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
-            let msg = format!("{} < {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::core::assert!(#lhs < #rhs, "{}", #msg); }
+            let msg = format!(
+                "assertion `{} < {}` failed",
+                to_display(&tokens[..s]),
+                to_display(&tokens[e..])
+            );
+            quote! {
+                match (&(#lhs), &(#rhs)) {
+                    (__lhs, __rhs) => {
+                        if !(*__lhs < *__rhs) {
+                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                        }
+                    }
+                }
+            }
         }
         Some((Op::Le, s, e)) => {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
-            let msg = format!("{} <= {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::core::assert!(#lhs <= #rhs, "{}", #msg); }
+            let msg = format!(
+                "assertion `{} <= {}` failed",
+                to_display(&tokens[..s]),
+                to_display(&tokens[e..])
+            );
+            quote! {
+                match (&(#lhs), &(#rhs)) {
+                    (__lhs, __rhs) => {
+                        if !(*__lhs <= *__rhs) {
+                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                        }
+                    }
+                }
+            }
         }
         Some((Op::Gt, s, e)) => {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
-            let msg = format!("{} > {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::core::assert!(#lhs > #rhs, "{}", #msg); }
+            let msg = format!(
+                "assertion `{} > {}` failed",
+                to_display(&tokens[..s]),
+                to_display(&tokens[e..])
+            );
+            quote! {
+                match (&(#lhs), &(#rhs)) {
+                    (__lhs, __rhs) => {
+                        if !(*__lhs > *__rhs) {
+                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                        }
+                    }
+                }
+            }
         }
         Some((Op::Ge, s, e)) => {
             let lhs = to_stream(&tokens[..s]);
             let rhs = to_stream(&tokens[e..]);
-            let msg = format!("{} >= {}", to_display(&tokens[..s]), to_display(&tokens[e..]));
-            quote! { ::core::assert!(#lhs >= #rhs, "{}", #msg); }
+            let msg = format!(
+                "assertion `{} >= {}` failed",
+                to_display(&tokens[..s]),
+                to_display(&tokens[e..])
+            );
+            quote! {
+                match (&(#lhs), &(#rhs)) {
+                    (__lhs, __rhs) => {
+                        if !(*__lhs >= *__rhs) {
+                            ::core::panic!("{}\n   left: {:?}\n  right: {:?}", #msg, __lhs, __rhs);
+                        }
+                    }
+                }
+            }
         }
         None => {
             let src = to_display(tokens);
